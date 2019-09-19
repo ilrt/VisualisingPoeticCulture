@@ -1,0 +1,15 @@
+# PyCharm
+.idea
+.ipynb_checkpoints/
+
+# virtual environment
+venv
+
+# cache
+__pycache__/
+
+# source data
+data/*
+
+# private settings
+private_settings.py
