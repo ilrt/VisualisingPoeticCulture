@@ -3,12 +3,14 @@ Visualising Poetry module
 """
 
 import glob
+import numpy as np
+import os
 import pandas as pd
 import settings as settings
-from zipfile import ZipFile
 import shutil
-import os
 import urllib
+from zipfile import ZipFile
+
 import private_settings as private
 
 
@@ -49,10 +51,21 @@ def unpack_zip():
 
 def write_pickle_data_frames():
     """ Create a data frame and pickle of the Excel sheet with poem data """
+
+    # create the pickles directory if it doesn't exist
+    if not os.path.exists(settings.PICKLE_SRC):
+        os.makedirs(settings.PICKLE_SRC)
+
     for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
         filename = file.split("/")[-1]
         filename = filename.replace('.xlsx', '')
         df = pd.read_excel(file, sheet_name='poem data')
+        # drop empty rows
+        df.dropna(axis=0, how='all', thresh=None, subset=None, inplace=True)
+        # make sure the year is int64
+        df['year'] = df['year'].astype(np.int64)
+        # strip whitespace around publication title
+        df['publication title'] = df['publication title'].str.strip()
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
 
 
