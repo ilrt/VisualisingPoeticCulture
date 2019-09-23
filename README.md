@@ -27,11 +27,11 @@ select 'Environment'. Click 'Add', select 'Requirements.txt'. For 'Select Target
 
 In the project select 'New' and choose 'Blank File' and call it ```private_settings.py```.
 
-Add a variable called ```database_zip_url``` which is assigned the URL of a DropBox link. 
+Add a variable called ```DATABASE_ZIP_URL``` which is assigned the URL of a DropBox link. 
 The URL should end in ```dl=1```. For example:
 
 ```python
-database_zip_url = 'https://www.dropbox.com/sh/l5kfrez2js5ckbm/GhCfdfGGHvbvbfFGTvvv?dl=1'
+DATABASE_ZIP_URL = 'https://www.dropbox.com/sh/l5kfrez2js5ckbm/GhCfdfGGHvbvbfFGTvvv?dl=1'
 ```
 
 ### Get the data
