@@ -16,6 +16,7 @@ import private_settings as private
 
 # ---------- Methods for cleaning the data folder
 
+
 def clean(target):
     """ Clean a target directory of files and sub directories """
     if os.path.exists(target):
