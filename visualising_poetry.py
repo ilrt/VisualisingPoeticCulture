@@ -67,6 +67,8 @@ def write_pickle_data_frames():
         df['year'] = df['year'].astype(np.int64)
         # strip whitespace around publication title
         df['publication title'] = df['publication title'].str.strip()
+        # consistent case for publication tyoe
+        df['publication type'] = df['publication type'].str.lower()
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
 
 
