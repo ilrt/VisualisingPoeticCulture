@@ -34,6 +34,11 @@ def clean_preprocessed():
     clean(settings.PICKLE_SRC)
 
 
+def clean_all():
+    """ Clean the environment """
+    clean_preprocessed()
+    clean_source()
+
 # ---------- Methods for getting and preprocessing data
 
 def download_data():
@@ -65,8 +70,12 @@ def write_pickle_data_frames():
         df.dropna(axis=0, how='all', thresh=None, subset=None, inplace=True)
         # make sure the year is int64
         df['year'] = df['year'].astype(np.int64)
+        # make sure a ref no is an int
+        df['ref no'] = df['ref no'].astype(pd.Int64Dtype())
         # strip whitespace around publication title
         df['publication title'] = df['publication title'].str.strip()
+        # strip whitespace and normalize case on month
+        df['month'] = df['month'].str.title()
         # consistent case for publication tyoe
         df['publication type'] = df['publication type'].str.lower()
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
