@@ -13,6 +13,17 @@ from zipfile import ZipFile
 
 import private_settings as private
 
+# ---------- Constants (Excel and Data Frame headers)
+
+POEM_DATA_SHEET = 'poem data'
+PUB_TITLE = 'publication title'
+PUB_TYPE = 'publication type'
+REF_NO = 'ref no'
+YEAR = 'year'
+MONTH = 'month'
+DAY = 'day'
+F_LINE = 'first line'
+
 
 # ---------- Methods for cleaning the data folder
 
@@ -39,6 +50,7 @@ def clean_all():
     clean_preprocessed()
     clean_source()
 
+
 # ---------- Methods for getting and preprocessing data
 
 def download_data():
@@ -56,28 +68,44 @@ def unpack_zip():
 
 
 def write_pickle_data_frames():
-    """ Create a data frame and pickle of the Excel sheet with poem data """
+    """
+    Turn the Excel spreadsheet into a Pandas DataFrame and create a pickle file.
+    We 'clean' the data before creating the pickle file.
+    """
 
     # create the pickles directory if it doesn't exist
     if not os.path.exists(settings.PICKLE_SRC):
         os.makedirs(settings.PICKLE_SRC)
 
+    # go through sub folders and get the full name of Excel (.xlsx) files
     for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
+        # get the filename (without folders and file extension)
         filename = file.split("/")[-1]
         filename = filename.replace('.xlsx', '')
-        df = pd.read_excel(file, sheet_name='poem data')
+
+        # open the excel file and get the poem data
+        df = pd.read_excel(file, sheet_name=POEM_DATA_SHEET)
+
         # drop empty rows
         df.dropna(axis=0, how='all', thresh=None, subset=None, inplace=True)
+
         # make sure the year is int64
-        df['year'] = df['year'].astype(np.int64)
+        df[YEAR] = df[YEAR].astype(np.int64)
+
         # make sure a ref no is an int
-        df['ref no'] = df['ref no'].astype(pd.Int64Dtype())
+        df[REF_NO] = df[REF_NO].astype(pd.Int64Dtype())
+
         # strip whitespace around publication title
-        df['publication title'] = df['publication title'].str.strip()
+        df[PUB_TITLE] = df[PUB_TITLE].str.strip()
+
         # strip whitespace and normalize case on month
-        df['month'] = df['month'].str.title()
-        # consistent case for publication tyoe
-        df['publication type'] = df['publication type'].str.lower()
+        df[MONTH] = df[MONTH].str.strip()
+        df[MONTH] = df[MONTH].str.title()
+
+        # consistent case for publication type
+        df[PUB_TYPE] = df[PUB_TYPE].str.lower()
+
+        # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
 
 
@@ -111,3 +139,62 @@ def pickle_as_single_data_frame():
         results.append(pd.read_pickle(file))
 
     return pd.concat(results, sort=False)
+
+
+# ---------- Helper methods
+
+def start_year(df):
+    """ Get the earliest year in a data frame """
+    return df[YEAR].min()
+
+
+def end_year(df):
+    """ Get the latest year in a data frame """
+    return df[YEAR].max()
+
+
+def create_publication_year_matrix(df):
+    """ Create a matrix of publications and years so we can see the coverage in a data frame """
+
+    # we'll have titles as the index and years as the columns
+    year_range_column = np.arange(start_year(df), end_year(df) + 1, 1)
+    pub_title_index = df[PUB_TITLE].unique()
+
+    # create a matrix of titles and possible years with a value of zero
+    matrix = pd.DataFrame(np.zeros(shape=(pub_title_index.size, year_range_column.size)), columns=year_range_column,
+                          index=pub_title_index)
+
+    # Add 1 to a title / year combination
+    for title in pub_title_index:
+        sub_df = df[df[PUB_TITLE] == title]
+        sub_years = sub_df[YEAR].unique()
+        for year in sub_years:
+            matrix.at[title, year] += 1
+
+    return matrix
+
+
+def create_publications_matrix(df):
+    """" Create a matrix of publications where the score is incremented when a poem is shared
+         between publications. Reprints in the same publication are not included. """
+
+    # publications (ignore duplicates)
+    pubs = df[PUB_TITLE].unique()
+
+    # create a matrix of publications with a value of zero
+    matrix_df = pd.DataFrame(np.zeros(shape=(pubs.size, pubs.size)), columns=pubs, index=pubs)
+
+    # group by ref number (i.e the same poem)
+    grouped = df.groupby(REF_NO)
+
+    # go through the groups and update matrix
+    for group_name, df_group in grouped:
+        # go through the publication on one axis
+        for pub_x in df_group[PUB_TITLE].unique():
+            # go through the group on the other axes
+            for pub_y in df_group[PUB_TITLE].unique():
+                # increment score if the publications don't match
+                if pub_y != pub_x:
+                    matrix_df.at[pub_x, pub_y] += 1
+
+    return matrix_df
