@@ -131,14 +131,18 @@ def setup_if_needed():
         print("Setup complete")
 
 
-def pickle_as_single_data_frame():
-    """ Load all the pickle files as a single data frame """
+def pickle_as_single_data_frame(max_year=settings.MAX_YEAR):
+    """ Load all the pickle files as a single data frame. We don't return data beyond the MAX_YEAR value. """
     files = glob.glob(settings.PICKLE_SRC + '*.pickle', recursive=True)
     results = []
     for file in files:
         results.append(pd.read_pickle(file))
 
-    return pd.concat(results, sort=False)
+    # merge the files
+    df = pd.concat(results, sort=False)
+
+    # return data within the max year value
+    return df[df[YEAR] <= max_year]
 
 
 # ---------- Helper methods
@@ -153,9 +157,14 @@ def end_year(df):
     return df[YEAR].max()
 
 
-def republished_poems(df):
+def copied_poems(df):
     """" Create a new data frame of poems that have been identified as printed elsewhere """
     return df[df[REF_NO].notnull()]
+
+
+def publications(df, pubs):
+    """ Create a subset based on the title of the publications """
+    return df[df[PUB_TITLE].isin(pubs)]
 
 
 def create_publication_year_matrix(df):
@@ -185,6 +194,7 @@ def create_publications_matrix(df):
 
     # publications (ignore duplicates)
     pubs = df[PUB_TITLE].unique()
+    pubs.sort()
 
     # create a matrix of publications with a value of zero
     matrix_df = pd.DataFrame(np.zeros(shape=(pubs.size, pubs.size)), columns=pubs, index=pubs)
