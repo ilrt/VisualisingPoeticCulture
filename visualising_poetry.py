@@ -153,6 +153,11 @@ def end_year(df):
     return df[YEAR].max()
 
 
+def republished_poems(df):
+    """" Create a new data frame of poems that have been identified as printed elsewhere """
+    return df[df[REF_NO].notnull()]
+
+
 def create_publication_year_matrix(df):
     """ Create a matrix of publications and years so we can see the coverage in a data frame """
 
@@ -191,7 +196,7 @@ def create_publications_matrix(df):
     for group_name, df_group in grouped:
         # go through the publication on one axis
         for pub_x in df_group[PUB_TITLE].unique():
-            # go through the group on the other axes
+            # go through the grotup on the other axes
             for pub_y in df_group[PUB_TITLE].unique():
                 # increment score if the publications don't match
                 if pub_y != pub_x:
