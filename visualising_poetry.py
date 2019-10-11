@@ -10,6 +10,7 @@ import settings as settings
 import shutil
 import urllib
 from zipfile import ZipFile
+import ipywidgets as widgets
 
 import private_settings as private
 
@@ -23,6 +24,16 @@ YEAR = 'year'
 MONTH = 'month'
 DAY = 'day'
 F_LINE = 'first line'
+
+# computed
+PRINTED_DATE = 'printed'
+PRINTED_DATE_STR = 'printed (string)'
+
+# used to convert strings used in the dataset to numbers
+MONTH_MAP = {
+    'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
+    'September': 9, 'October': 10, 'November': 11, 'December': 12, 'Dec Supp': 12, 'Prefatory': 1
+}
 
 
 # ---------- Methods for cleaning the data folder
@@ -92,6 +103,9 @@ def write_pickle_data_frames():
         # make sure the year is int64
         df[YEAR] = df[YEAR].astype(np.int64)
 
+        # make sure the day is int64
+        df[DAY] = df[DAY].astype(pd.Int64Dtype())
+
         # make sure a ref no is an int
         df[REF_NO] = df[REF_NO].astype(pd.Int64Dtype())
 
@@ -105,8 +119,68 @@ def write_pickle_data_frames():
         # consistent case for publication type
         df[PUB_TYPE] = df[PUB_TYPE].str.lower()
 
+        # create a datetime object for the calculated printed date
+        df[PRINTED_DATE] = df.apply(create_printed_datetime, axis=1)
+
+        # Create a string representation ... in case we want to view in Excel
+        df[PRINTED_DATE_STR] = df.apply(date_to_string, axis=1)
+
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
+
+
+# ---------- Data cleansing methods
+
+def create_printed_datetime(row):
+    """
+    Create a calculated numpy datetime64 object to represent the estimated date the publication was  printed and/or
+    distributed. If the year, month and day are given we use that. If no day is given we set the value to the 1st of
+    the following month, since these publications were usually distributed the start of the month following the month
+    given on the publication. 'Prefatory' and 'Dec Supp' are special cases set to 1 January of the following year given
+    in the publication.
+    """
+
+    # get the publication type
+    pub_type = row[PUB_TYPE]
+
+    # get the values from the row
+    year = row[YEAR]
+    month = row[MONTH]
+    day = row[DAY]
+
+    # Prefatory and Dec Supp were printed in the January ...
+    if month == "Prefatory" or month == "Dec Supp":
+        day = 1
+        month = 1
+        year += 1
+    else:
+        # convert String to numeric representation
+        month = MONTH_MAP[month]
+
+    # if the day isn't set, make it the first of the month
+    if day is np.NaN:
+        day = 1
+        # if its a magazine, its actually published at the start of the following month
+        if 'magazine' in pub_type:
+            month += 1
+            # if we have too may months, increment the year.
+            if month == 13:
+                month = 1
+                year += 1
+
+    # create a string in the expected format, YYYY-MM-DD
+    month_str = "{:02d}".format(month)
+    day_str = "{:02d}".format(day)
+    date_str = "{}-{}-{}".format(year, month_str, day_str)
+
+    # return the numpy object
+    return np.datetime64(date_str)
+
+
+def date_to_string(row):
+    val = row[PRINTED_DATE]
+    ts = pd.to_datetime(str(val))
+    return ts.strftime('%Y-%m-%d')
 
 
 # ---------- Methods for setting an environment up for a notebook
@@ -147,13 +221,34 @@ def pickle_as_single_data_frame(max_year=settings.MAX_YEAR):
 
 # ---------- Helper methods
 
+def source_files_info_as_df():
+    """ Create a data frame with the details of the source files """
+    files = []
+    for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
+        files.append(file.split('/')[-1])
+    return pd.DataFrame(data=files, columns=['Source Files'])
+
+
+def preprocessed_files_info_as_df():
+    """ Create a data frame with the details of the preprocessed files """
+    files = []
+    for file in glob.glob(settings.PICKLE_SRC + '*.pickle', recursive=True):
+        files.append(file.split('/')[-1])
+    return pd.DataFrame(data=files, columns=['Preprocessed Files'])
+
+
+def complete_dataset():
+    """" Get the complete dataset as a Pandas data frame."""
+    return pickle_as_single_data_frame()
+
+
 def start_year(df):
-    """ Get the earliest year in a data frame """
+    """ Get the earliest year in the data frame """
     return df[YEAR].min()
 
 
 def end_year(df):
-    """ Get the latest year in a data frame """
+    """ Get the latest year in the data frame """
     return df[YEAR].max()
 
 
@@ -162,8 +257,14 @@ def copied_poems(df):
     return df[df[REF_NO].notnull()]
 
 
-def publications(df, pubs):
-    """ Create a subset based on the title of the publications """
+def publication_list(df):
+    """ Provide a list of publication titles in alphabetical order"""
+    pub_name_list = df[PUB_TITLE].unique()
+    return np.sort(pub_name_list)
+
+
+def publications_df(df, pubs):
+    """ Create a subset data frame based on the title of the publications """
     return df[df[PUB_TITLE].isin(pubs)]
 
 
@@ -213,3 +314,14 @@ def create_publications_matrix(df):
                     matrix_df.at[pub_x, pub_y] += 1
 
     return matrix_df
+
+
+# ----------- Display widgets
+
+def publication_list_widget(df):
+    pub_list = publication_list(df)
+    return widgets.Select(
+        options=pub_list,
+        description="Choose",
+        disabled=False
+    )
