@@ -422,8 +422,22 @@ def attributes_total_output(df, pub_title, out):
                                          "other artifacts removed)")
 
         ## TODO ... these might not exist ....!!!
-        attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
-        attr_types_subset['female'] = attr_types_subset['f.pseud'] + attr_types_subset['f.d.e.']
+        attr_types_subset['male'] = np.NaN
+        if 'm.pseud' in attr_types_subset and 'm.d.e.' in attr_types_subset:
+            attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
+        elif 'm.pseud' in attr_types_subset:
+            attr_types_subset['male'] = attr_types_subset['m.pseud']
+        elif 'm.d.e.' in attr_types_subset:
+            attr_types_subset['male'] = attr_types_subset['m.d.e']
+
+        attr_types_subset['female'] = np.NaN
+        if 'f.pseud' in attr_types_subset and 'f.d.e.' in attr_types_subset:
+            attr_types_subset['female'] = attr_types_subset['f.pseud'] + attr_types_subset['f.d.e.']
+        elif 'f.pseud' in attr_types_subset:
+            attr_types_subset['female'] = attr_types_subset['f.pseud']
+        elif 'f.d.e.' in attr_types_subset:
+            attr_types_subset['female'] = attr_types_subset['f.d.e.']
+
         attr_types_subset = attr_types_subset.drop(['m.pseud', 'm.d.e.', 'p/n', 'ini', 'f.d.e.', 'f.pseud'],
                                                    axis=1, errors='ignore')
 
