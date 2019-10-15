@@ -3,9 +3,15 @@ Visualising Poetry module
 """
 
 import glob
+import re
+
 import numpy as np
 import os
 import pandas as pd
+from IPython.core.display import display, HTML
+import matplotlib.pyplot as plot
+import seaborn as sn
+
 import settings as settings
 import shutil
 import urllib
@@ -24,6 +30,7 @@ YEAR = 'year'
 MONTH = 'month'
 DAY = 'day'
 F_LINE = 'first line'
+ATTR_TYPE = 'attribution type'
 
 # computed
 PRINTED_DATE = 'printed'
@@ -34,6 +41,8 @@ MONTH_MAP = {
     'January': 1, 'February': 2, 'March': 3, 'April': 4, 'May': 5, 'June': 6, 'July': 7, 'August': 8,
     'September': 9, 'October': 10, 'November': 11, 'December': 12, 'Dec Supp': 12, 'Prefatory': 1
 }
+
+attr_type_regex = re.compile('^[m|f]\. pseud$')
 
 
 # ---------- Methods for cleaning the data folder
@@ -125,6 +134,9 @@ def write_pickle_data_frames():
         # Create a string representation ... in case we want to view in Excel
         df[PRINTED_DATE_STR] = df.apply(date_to_string, axis=1)
 
+        # clean the attribution type
+        df[ATTR_TYPE] = df.apply(clean_attribution_type, axis=1)
+
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
 
@@ -181,6 +193,19 @@ def date_to_string(row):
     val = row[PRINTED_DATE]
     ts = pd.to_datetime(str(val))
     return ts.strftime('%Y-%m-%d')
+
+
+def clean_attribution_type(row):
+    val = row[ATTR_TYPE]
+    if row is not np.NaN:
+        val = str(val).strip()
+        if attr_type_regex.match(val):
+            val = val.replace(" ", "")
+        elif val == 'm.d.e' or val == 'f.d.e':
+            val = val + '.'
+        elif val == 'pn':
+            val = 'p/n'
+    return val
 
 
 # ---------- Methods for setting an environment up for a notebook
@@ -316,12 +341,101 @@ def create_publications_matrix(df):
     return matrix_df
 
 
+def attribute_types_total_df(df):
+    """ Data frame with details about attribution types """
+
+    # keep track of the dataset total
+    dataset_total = len(df.index)
+
+    # group by, count and order the attribution types
+    attr_type_count = df.groupby(ATTR_TYPE)[F_LINE].count().sort_values(ascending=False).to_frame()
+
+    # reset the index and rename the count column
+    attr_type_count = attr_type_count.reset_index().rename(columns={F_LINE: 'occurrences'})
+
+    # add in the % calculation
+    attr_type_count['% of total'] = (attr_type_count['occurrences'] / dataset_total) * 100
+
+    return attr_type_count
+
+
+def attribution_types_df(df):
+    """ Create a data frame with details about attribution types """
+
+    # create an empty data frame to hold the occurrences of attribution types by year
+    # columns are the attribute types, the index will be the years
+    cols = df[ATTR_TYPE].unique()
+    index = np.arange(df[YEAR].min(), df[YEAR].max() + 1)
+    attr_types = pd.DataFrame(np.NaN, index=index, columns=cols)
+
+    # group by year and attribution type (reset data frame index)
+    results = df.groupby([YEAR, ATTR_TYPE])[F_LINE].count().reset_index()
+
+    # just group by year
+    results_group_by = results.groupby(YEAR)
+
+    # iterate over the years and unpack the tuples to get the data and update data frame
+    for name, group in results_group_by:
+        for row in group.iterrows():
+            year = row[1][YEAR]
+            attr = row[1][ATTR_TYPE]
+            no = row[1][F_LINE]
+            attr_types.at[year, attr] = no
+
+    return attr_types
+
+
 # ----------- Display widgets
 
 def publication_list_widget(df):
+    """ Create a widget with a list of available publications"""
     pub_list = publication_list(df)
     return widgets.Select(
         options=pub_list,
         description="Choose",
         disabled=False
     )
+
+
+def attributes_total_output(df, pub_title, out):
+    pub_df = publications_df(df, [pub_title])
+    attr_type_count_df = attribute_types_total_df(pub_df)
+
+    # display results in a table
+    out.clear_output()
+    with out:
+        display(HTML('<h3>{}, {}–{}</h3>'.format(pub_title, start_year(pub_df), end_year(pub_df))))
+        display(HTML('<p>Attribute types in {}'.format(pub_title)))
+        display(HTML(attr_type_count_df.to_html()))
+
+        # display % in a plot
+        attr_type_count_df.plot(kind='bar', x=ATTR_TYPE, y='% of total')
+        plot.show()
+
+        attr_types = attribution_types_df(pub_df)
+        plot_attribution_types_line_plot(attr_types, "All attribution types in {} by year".format(pub_title))
+
+        attr_types_subset = attr_types.drop(['nan', 'same', 'pseud', 'same (p/n)', '?', '--', 'f.pseud/f.d.e.'], axis=1,
+                                            errors='ignore')
+        plot_attribution_types_line_plot(attr_types_subset,
+                                         "Attribution types against the whole dataset by year (non attributed and "
+                                         "other artifacts removed)")
+
+        ## TODO ... these might not exist ....!!!
+        attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
+        attr_types_subset['female'] = attr_types_subset['f.pseud'] + attr_types_subset['f.d.e.']
+        attr_types_subset = attr_types_subset.drop(['m.pseud', 'm.d.e.', 'p/n', 'ini', 'f.d.e.', 'f.pseud'],
+                                                   axis=1, errors='ignore')
+
+        # regenerate graph
+        plot_attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
+
+
+def plot_attribution_types_line_plot(df, title, x_label='Years', y_label='Occurrences'):
+    """ Plot the attribution types in a line plot """
+    plot.figure(figsize=(20, 10))
+    plot.xlabel(x_label)
+    plot.ylabel(y_label)
+    plot.title(title)
+    sn.lineplot(data=df, dashes=False)
+    plot.show()
