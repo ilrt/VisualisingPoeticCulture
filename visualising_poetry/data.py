@@ -248,18 +248,26 @@ def pickle_as_single_data_frame(max_year=settings.MAX_YEAR):
 
 def source_files_info_as_df():
     """ Create a data frame with the details of the source files """
-    files = []
+    data = []
     for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
-        files.append(file.split('/')[-1])
-    return pd.DataFrame(data=files, columns=['Source Files'])
+        row = [file.split('/')[-1]]
+        data.append(row)
+        df = pd.read_excel(file, sheet_name=POEM_DATA_SHEET)
+        row.append(df.shape[0])
+        row.append(df.shape[1])
+    return pd.DataFrame(data=data, columns=['Source Files', 'Rows', 'Columns'])
 
 
 def preprocessed_files_info_as_df():
     """ Create a data frame with the details of the preprocessed files """
-    files = []
+    data = []
     for file in glob.glob(settings.PICKLE_SRC + '*.pickle', recursive=True):
-        files.append(file.split('/')[-1])
-    return pd.DataFrame(data=files, columns=['Preprocessed Files'])
+        row = [file.split('/')[-1]]
+        data.append(row)
+        df = pd.read_pickle(file)
+        row.append(df.shape[0])
+        row.append(df.shape[1])
+    return pd.DataFrame(data=data, columns=['Preprocessed Files', 'Rows', 'Columns'])
 
 
 def complete_dataset():
