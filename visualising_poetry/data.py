@@ -393,16 +393,50 @@ def attribution_types_df(df):
     return attr_types
 
 
+def publication_overview(df):
+    """ Return a data frame that represents an overview of the data in a publication """
+
+    # date range for that publication
+    min_year = start_year(df)
+    max_year = end_year(df)
+    year_range_index = np.arange(min_year, max_year + 1, 1)
+
+    # columns we want
+    columns = np.array(['Total poems', 'Originals', 'Originals as %', 'Copies', 'Copies as %'])
+
+    # create a results data frame filled with NaN
+    results = pd.DataFrame(np.zeros(shape=(year_range_index.size, columns.size)), columns=columns,
+                           index=year_range_index)
+
+    for year in year_range_index:
+        # get the subset for the year
+        year_df = df[df[YEAR] == year]
+
+        # total number of poems
+        total = year_df[F_LINE].count()
+        results.at[year, columns[0]] = total
+
+        # total number of identified copies
+        copies = year_df[REF_NO].notnull().sum()
+        results.at[year, columns[3]] = copies
+
+        # originals (not identified as a copy)
+        originals = total - copies
+        results.at[year, columns[1]] = originals
+
+        # originals as a percentage of total
+        originals_percent = originals / total * 100
+        results.at[year, columns[2]] = originals_percent
+
+        # copies as percent of total
+        copies_percent = copies / total * 100
+        results.at[year, columns[4]] = copies_percent
+
+    return results
+
 # ----------- Display widgets
 
-def publication_list_widget(df):
-    """ Create a widget with a list of available publications"""
-    pub_list = publication_list(df)
-    return widgets.Select(
-        options=pub_list,
-        description="Choose",
-        disabled=False
-    )
+
 
 
 def attributes_total_output(df, pub_title, out):
