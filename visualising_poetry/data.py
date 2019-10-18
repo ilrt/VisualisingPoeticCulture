@@ -31,10 +31,12 @@ MONTH = 'month'
 DAY = 'day'
 F_LINE = 'first line'
 ATTR_TYPE = 'attribution type'
+AUTH = 'authorship'
 
 # computed
 PRINTED_DATE = 'printed'
 PRINTED_DATE_STR = 'printed (string)'
+GENDER = 'gender'
 
 # used to convert strings used in the dataset to numbers
 MONTH_MAP = {
@@ -42,8 +44,29 @@ MONTH_MAP = {
     'September': 9, 'October': 10, 'November': 11, 'December': 12, 'Dec Supp': 12, 'Prefatory': 1
 }
 
-attr_type_regex = re.compile('^[m|f]\. pseud$')
+# used to tidy up m.pseud and f.pseud
+attr_type_regex = re.compile(r'^[m|f]\. pseud$')
 
+# used to check if first names are just initials
+initials_regex = re.compile(r'^((\b[A-Za-z]\b){1}(\.)?( )?)+')
+
+# used to check if a name has a male prefix
+male_prefix_regex = re.compile(r'^\b(Mr|Dr|Rev)\b(\.)?')
+
+# used to check if we have a female prefix
+female_prefix = re.compile(r'^\b(Mrs|Miss)\b(\.)?')
+
+# used to check if we have one of the common female names
+female_names = \
+    re.compile(r'^\b(Amy|Anna|Anne|Aphra|Catherine|Charlotte|Elizabeth|Esther|Jenny|Judith|Mary|Martha|Mary|Sarah|Frances)\b')
+
+male_identifiers = ['Bishop', 'Lord', 'Duke', 'Signor']
+
+# computed values when working out gender
+GENDER_MALE = 'male'
+GENDER_FEMALE = 'female'
+GENDER_UNKNOWN = 'not attributed'
+GENDER_AMBIGUOUS = 'attributed (ambiguous)'
 
 # ---------- Methods for cleaning the data folder
 
@@ -137,6 +160,9 @@ def write_pickle_data_frames():
         # clean the attribution type
         df[ATTR_TYPE] = df.apply(clean_attribution_type, axis=1)
 
+        # calculate gender
+        df[GENDER] = df.apply(calculate_gender, axis=1)
+
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
 
@@ -206,6 +232,55 @@ def clean_attribution_type(row):
         elif val == 'pn':
             val = 'p/n'
     return val
+
+
+def calculate_gender(row):
+    """ An attempt to use the 'attribution type' and 'authorship' values to classify the gender of the author."""
+
+    # start with the attribution
+    attr = row[ATTR_TYPE]
+    # nan means uncredited, so we don't know
+    if attr == 'nan':
+        return GENDER_UNKNOWN
+    # clearly identified as male
+    elif attr == 'm.d.e.' or attr == 'm.pseud':
+        return GENDER_MALE
+    # clearly identified as female
+    elif attr == 'f.d.e.' or attr == 'f.pseud':
+        return GENDER_FEMALE
+    # otherwise ... we need to make an education guess based on the
+    else:
+        name = row[AUTH]
+        # an attribution type is given, but no authorship, so its ambiguous
+        if not type(name) is str:
+            return GENDER_AMBIGUOUS
+        else:
+            # names are generally given as [LAST NAME], [FIRST NAME]
+            # first name and title gives us the best chance
+            tmp = name.split(', ')
+            # not too parts, so its ambiguous
+            if len(tmp) < 2:
+                return GENDER_AMBIGUOUS
+            else:
+                f_name = tmp[1].strip()
+                # just initials? ambiguous ...
+                if re.match(initials_regex, f_name):
+                    return GENDER_AMBIGUOUS
+                # male prefixes?
+                elif re.match(male_prefix_regex, f_name):
+                    return GENDER_MALE
+                # female prefixes?
+                elif re.match(female_prefix, f_name):
+                    return GENDER_FEMALE
+                # common female names?
+                elif re.match(female_names, f_name):
+                    return GENDER_FEMALE
+                # reference to a maiden name?
+                elif 'nee ' in f_name:
+                    return GENDER_FEMALE
+                # balance of probability, what's left is male
+                else:
+                    return GENDER_MALE
 
 
 # ---------- Methods for setting an environment up for a notebook
@@ -434,9 +509,8 @@ def publication_overview(df):
 
     return results
 
+
 # ----------- Display widgets
-
-
 
 
 def attributes_total_output(df, pub_title, out):
@@ -463,7 +537,6 @@ def attributes_total_output(df, pub_title, out):
                                          "Attribution types against the whole dataset by year (non attributed and "
                                          "other artifacts removed)")
 
-        ## TODO ... these might not exist ....!!!
         attr_types_subset['male'] = np.NaN
         if 'm.pseud' in attr_types_subset and 'm.d.e.' in attr_types_subset:
             attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
