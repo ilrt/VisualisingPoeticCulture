@@ -36,6 +36,7 @@ AUTH = 'authorship'
 # computed
 PRINTED_DATE = 'printed'
 PRINTED_DATE_STR = 'printed (string)'
+PRINTED_YEAR = 'printed year'
 GENDER = 'gender'
 
 # used to convert strings used in the dataset to numbers
@@ -58,7 +59,8 @@ female_prefix = re.compile(r'^\b(Mrs|Miss)\b(\.)?')
 
 # used to check if we have one of the common female names
 female_names = \
-    re.compile(r'^\b(Amy|Anna|Anne|Aphra|Catherine|Charlotte|Elizabeth|Esther|Jenny|Judith|Mary|Martha|Mary|Sarah|Frances)\b')
+    re.compile(
+        r'^\b(Amy|Anna|Anne|Aphra|Catherine|Charlotte|Elizabeth|Esther|Jenny|Judith|Mary|Martha|Mary|Sarah|Frances)\b')
 
 male_identifiers = ['Bishop', 'Lord', 'Duke', 'Signor']
 
@@ -67,6 +69,7 @@ GENDER_MALE = 'male'
 GENDER_FEMALE = 'female'
 GENDER_UNKNOWN = 'not attributed'
 GENDER_AMBIGUOUS = 'attributed (ambiguous)'
+
 
 # ---------- Methods for cleaning the data folder
 
@@ -156,6 +159,9 @@ def write_pickle_data_frames():
 
         # Create a string representation ... in case we want to view in Excel
         df[PRINTED_DATE_STR] = df.apply(date_to_string, axis=1)
+
+        # add the print year for convenience
+        df[PRINTED_YEAR] = df[PRINTED_DATE].dt.year
 
         # clean the attribution type
         df[ATTR_TYPE] = df.apply(clean_attribution_type, axis=1)
@@ -360,6 +366,11 @@ def end_year(df):
     return df[YEAR].max()
 
 
+def print_year_range(df):
+    """ Create an array of print years in a data frame (used in graphs a lot) """
+    return np.arange(start_year(df), end_year(df) + 1)
+
+
 def copied_poems(df):
     """" Create a new data frame of poems that have been identified as printed elsewhere """
     return df[df[REF_NO].notnull()]
@@ -468,6 +479,54 @@ def attribution_types_df(df):
     return attr_types
 
 
+def attribution_types_overview_df(df):
+    """ Create a data frame with details with an overview of attribution types by year. Thus will include
+        the raw numbers and % of total for that year. """
+
+    # We want two columns for each attribute type, with a raw number and %. We need to create the passed in
+    # data frame to discover what attributes types are available do we can create the columns for the
+    # new data frame
+
+    # format strings for columns
+    no_str = "{} as no."
+    pc_str = "{} as %"
+
+    # hold total and attribute types
+    all_cols = ['Total']
+
+    # create columns based on attributes
+    attrs = df[ATTR_TYPE].unique()
+    for attr in attrs:
+        all_cols.append(no_str.format(attr))
+        all_cols.append(pc_str.format(attr))
+
+    # create an empty data frame
+    columns = np.array(all_cols)
+    index = print_year_range(df)
+    attr_types_df = pd.DataFrame(np.NaN, index=index, columns=columns)
+
+    # group dataset by year
+    results_group_by = df.groupby([PRINTED_YEAR])
+
+    # process each year
+    for year, year_group in results_group_by:
+        # record the total for the year
+        attr_group_year_total = year_group[PRINTED_YEAR].count()
+        attr_types_df.at[year, columns[0]] = attr_group_year_total
+        # group by attribute type for the year
+        attr_group_year = year_group.groupby(ATTR_TYPE)
+        # go through each attribute type ...
+        for attr_name, attr_group in attr_group_year:
+            attr_no_key = no_str.format(attr_name)
+            attr_pc_key = pc_str.format(attr_name)
+            attr_group_total = attr_group[ATTR_TYPE].count()
+            attr_group_pc = (attr_group_total / attr_group_year_total) * 100
+            attr_types_df.at[year, attr_no_key] = attr_group_total
+            attr_types_df.at[year, attr_pc_key] = attr_group_pc
+
+    return attr_types_df
+
+
 def publication_overview(df):
     """ Return a data frame that represents an overview of the data in a publication """
 
@@ -510,61 +569,96 @@ def publication_overview(df):
     return results
 
 
+def gender_overview_df(df):
+    """ Create a data frame providing an overview of poems and gender for a provided data frame """
+
+    # printed date slips into Jan beyond MAX year, let's remove those
+    df = df[df[PRINTED_YEAR] <= settings.MAX_YEAR]
+
+    # date range for that publication
+    min_year = start_year(df)
+    max_year = end_year(df)
+    year_range_index = np.arange(min_year, max_year + 1, 1)
+
+    # columns we want
+    columns = np.array(['Total poems', 'Male', 'Male as %', 'Female', 'Female as %', 'N/A', 'N/A as %',
+                        'Ambiguous', 'Ambiguous as %'])
+
+    # create a matrix of titles and possible years with a value of zero
+    gender_df = pd.DataFrame(np.zeros(shape=(year_range_index.size, columns.size)), columns=columns,
+                             index=year_range_index)
+
+    # sort and group the data
+    results = df.sort_values([PRINTED_YEAR, GENDER])[[PRINTED_YEAR, GENDER]]
+    results_group_by = results.groupby(PRINTED_YEAR)
+
+    for name, group in results_group_by:
+        # total for that year
+        total = group[PRINTED_YEAR].count()
+        # count each of the four types
+        male = group[group[GENDER] == GENDER_MALE][GENDER].count()
+        female = group[group[GENDER] == GENDER_FEMALE][GENDER].count()
+        na = group[group[GENDER] == GENDER_UNKNOWN][GENDER].count()
+        amb = group[group[GENDER] == GENDER_AMBIGUOUS][GENDER].count()
+        # add raw data and % to the results
+        gender_df.at[name, columns[0]] = total
+        gender_df.at[name, columns[1]] = male
+        gender_df.at[name, columns[2]] = (male / total) * 100
+        gender_df.at[name, columns[3]] = female
+        gender_df.at[name, columns[4]] = (female / total) * 100
+        gender_df.at[name, columns[5]] = na
+        gender_df.at[name, columns[6]] = (na / total) * 100
+        gender_df.at[name, columns[7]] = amb
+        gender_df.at[name, columns[8]] = (amb / total) * 100
+
+    return gender_df
+
 # ----------- Display widgets
 
 
-def attributes_total_output(df, pub_title, out):
-    pub_df = publications_df(df, [pub_title])
-    attr_type_count_df = attribute_types_total_df(pub_df)
+# def attributes_total_output(df, pub_title, out):
+#     pub_df = publications_df(df, [pub_title])
+#     attr_type_count_df = attribute_types_total_df(pub_df)
+#
+#     # display results in a table
+#     out.clear_output()
+#     with out:
+#         display(HTML('<h3>{}, {}–{}</h3>'.format(pub_title, start_year(pub_df), end_year(pub_df))))
+#         display(HTML('<p>Attribute types in {}'.format(pub_title)))
+#         display(HTML(attr_type_count_df.to_html()))
+#
+#         # display % in a plot
+#         attr_type_count_df.plot(kind='bar', x=ATTR_TYPE, y='% of total')
+#         plot.show()
+#
+#         attr_types = attribution_types_df(pub_df)
+#         plot_attribution_types_line_plot(attr_types, "All attribution types in {} by year".format(pub_title))
+#
+#         attr_types_subset = attr_types.drop(['nan', 'same', 'pseud', 'same (p/n)', '?', '--', 'f.pseud/f.d.e.'], axis=1,
+#                                             errors='ignore')
+#         plot_attribution_types_line_plot(attr_types_subset,
+#                                          "Attribution types against the whole dataset by year (non attributed and "
+#                                          "other artifacts removed)")
+#
+#         attr_types_subset['male'] = np.NaN
+#         if 'm.pseud' in attr_types_subset and 'm.d.e.' in attr_types_subset:
+#             attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
+#         elif 'm.pseud' in attr_types_subset:
+#             attr_types_subset['male'] = attr_types_subset['m.pseud']
+#         elif 'm.d.e.' in attr_types_subset:
+#             attr_types_subset['male'] = attr_types_subset['m.d.e']
+#
+#         attr_types_subset['female'] = np.NaN
+#         if 'f.pseud' in attr_types_subset and 'f.d.e.' in attr_types_subset:
+#             attr_types_subset['female'] = attr_types_subset['f.pseud'] + attr_types_subset['f.d.e.']
+#         elif 'f.pseud' in attr_types_subset:
+#             attr_types_subset['female'] = attr_types_subset['f.pseud']
+#         elif 'f.d.e.' in attr_types_subset:
+#             attr_types_subset['female'] = attr_types_subset['f.d.e.']
+#
+#         attr_types_subset = attr_types_subset.drop(['m.pseud', 'm.d.e.', 'p/n', 'ini', 'f.d.e.', 'f.pseud'],
+#                                                    axis=1, errors='ignore')
+#
+#         # regenerate graph
+#         plot_attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
 
-    # display results in a table
-    out.clear_output()
-    with out:
-        display(HTML('<h3>{}, {}–{}</h3>'.format(pub_title, start_year(pub_df), end_year(pub_df))))
-        display(HTML('<p>Attribute types in {}'.format(pub_title)))
-        display(HTML(attr_type_count_df.to_html()))
-
-        # display % in a plot
-        attr_type_count_df.plot(kind='bar', x=ATTR_TYPE, y='% of total')
-        plot.show()
-
-        attr_types = attribution_types_df(pub_df)
-        plot_attribution_types_line_plot(attr_types, "All attribution types in {} by year".format(pub_title))
-
-        attr_types_subset = attr_types.drop(['nan', 'same', 'pseud', 'same (p/n)', '?', '--', 'f.pseud/f.d.e.'], axis=1,
-                                            errors='ignore')
-        plot_attribution_types_line_plot(attr_types_subset,
-                                         "Attribution types against the whole dataset by year (non attributed and "
-                                         "other artifacts removed)")
-
-        attr_types_subset['male'] = np.NaN
-        if 'm.pseud' in attr_types_subset and 'm.d.e.' in attr_types_subset:
-            attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
-        elif 'm.pseud' in attr_types_subset:
-            attr_types_subset['male'] = attr_types_subset['m.pseud']
-        elif 'm.d.e.' in attr_types_subset:
-            attr_types_subset['male'] = attr_types_subset['m.d.e']
-
-        attr_types_subset['female'] = np.NaN
-        if 'f.pseud' in attr_types_subset and 'f.d.e.' in attr_types_subset:
-            attr_types_subset['female'] = attr_types_subset['f.pseud'] + attr_types_subset['f.d.e.']
-        elif 'f.pseud' in attr_types_subset:
-            attr_types_subset['female'] = attr_types_subset['f.pseud']
-        elif 'f.d.e.' in attr_types_subset:
-            attr_types_subset['female'] = attr_types_subset['f.d.e.']
-
-        attr_types_subset = attr_types_subset.drop(['m.pseud', 'm.d.e.', 'p/n', 'ini', 'f.d.e.', 'f.pseud'],
-                                                   axis=1, errors='ignore')
-
-        # regenerate graph
-        plot_attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
-
-
-def plot_attribution_types_line_plot(df, title, x_label='Years', y_label='Occurrences'):
-    """ Plot the attribution types in a line plot """
-    plot.figure(figsize=(20, 10))
-    plot.xlabel(x_label)
-    plot.ylabel(y_label)
-    plot.title(title)
-    sn.lineplot(data=df, dashes=False)
-    plot.show()
