@@ -45,6 +45,12 @@ MONTH_MAP = {
     'September': 9, 'October': 10, 'November': 11, 'December': 12, 'Dec Supp': 12, 'Prefatory': 1
 }
 
+# expected attribution types
+EXPECTED_ATTRS = ['nan', 'p/n', 'ini', 'm.pseud', 'm.d.e.', 'f.pseud', 'f.d.e.', 'information missing', 'illegible']
+
+# summary data - useful subset of fields
+SUMMARY = [REF_NO, PUB_TITLE, YEAR, MONTH, DAY, F_LINE, ATTR_TYPE]
+
 # used to tidy up m.pseud and f.pseud
 attr_type_regex = re.compile(r'^[m|f]\. pseud$')
 
@@ -168,6 +174,9 @@ def write_pickle_data_frames():
 
         # calculate gender
         df[GENDER] = df.apply(calculate_gender, axis=1)
+
+        # strip extra whitespace in authors
+        df[AUTH] = df[AUTH].strip()
 
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
@@ -435,6 +444,11 @@ def create_publications_matrix(df):
     return matrix_df
 
 
+def unexpected_attribute_types(df):
+    """ Data checking method – give poem details if they have unexpected attribute types """
+    return df[~df[ATTR_TYPE].isin(EXPECTED_ATTRS)][SUMMARY]
+
+
 def attribute_types_total_df(df):
     """ Data frame with details about attribution types """
 
@@ -612,6 +626,67 @@ def gender_overview_df(df):
         gender_df.at[name, columns[8]] = (amb / total) * 100
 
     return gender_df
+
+
+def authorship_overview_df(df):
+    """ Create a data frame of author and number of poems attributed to them """
+    authors = df.groupby(AUTH)[F_LINE].count().reset_index()
+    authors = authors.sort_values(F_LINE, ascending=False)
+    authors.columns = ['Author', 'Total Poems']
+    authors = authors.reset_index(drop=True)
+    return authors
+
+
+def authorship_poems_overview_df(df):
+    """ Provide a data frame that shows the no. authors and the total number of poems attributed to them, for
+        example 20 poets are attributed to 15 poems each. """
+
+    # get a running total for each other
+    authors = authorship_overview_df(df)
+
+    # group by the poem totals
+    authors_group = authors.groupby(authors.columns[1])
+
+    # hold the data
+    data = []
+
+    # columns in the new data frame
+    columns = ['No. of Poems', 'No. of Authors']
+
+    # iterate each other and count poems, add to the new data set
+    for name, group in authors_group:
+        row = [name, group['Total Poems'].count()]
+        data.append(row)
+
+    # return a pandas data frame
+    return pd.DataFrame(data, columns=columns)
+
+
+def authorship_publications_overview_df(df, pub_no=20):
+    """ Provide a data frame that shows which authors appeared in which journals. The pub_no, is a threshold
+        to only show authors attributed to that or more poems in the dataset. Default is 20 or more. """
+
+    # get authors
+    authors = authorship_overview_df(df)
+
+    # limit it to authors that meet the the threshold
+    authors = authors[authors['Total Poems'] >= 20]
+
+    # set the index to the authors
+    authors = authors.set_index('Author')
+
+    # get a list of publications
+    pubs = df[PUB_TITLE].unique().tolist()
+
+    # create a data frame with columns based on the publications and the index based on the authors
+    author_pubs = pd.DataFrame(np.zeros(shape=(len(authors.index), len(pubs))), columns=pubs, index=authors.index)
+
+    for author in author_pubs.index:
+        author_pub_df = df[df[AUTH] == author]
+        for pub in author_pub_df[PUB_TITLE]:
+            author_pubs.at[author, pub] += 1
+
+    return author_pubs
 
 # ----------- Display widgets
 
