@@ -11,6 +11,9 @@ DATA_SRC = DATA_ROOT + '/data/source/'
 # location of pickled Pandas data frames
 PICKLE_SRC = DATA_ROOT + '/data/preprocessed/'
 
+# location to puts reports
+REPORTS_DIR = DATA_ROOT + '/reports/'
+
 # name the file we download from DropBox
 DB_FILE = 'database.zip'
 

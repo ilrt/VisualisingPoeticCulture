@@ -98,10 +98,16 @@ def clean_preprocessed():
     clean(settings.PICKLE_SRC)
 
 
+def clean_reports():
+    """ Clean the reports folder"""
+    clean(settings.REPORTS_DIR)
+
+
 def clean_all():
     """ Clean the environment """
     clean_preprocessed()
     clean_source()
+    clean_reports()
 
 
 # ---------- Methods for getting and preprocessing data
@@ -181,6 +187,12 @@ def write_pickle_data_frames():
 
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
+
+
+def create_report_dir():
+    """ Create a report directory """
+    if not os.path.exists(settings.REPORTS_DIR):
+        os.makedirs(settings.REPORTS_DIR)
 
 
 # ---------- Data cleansing methods
@@ -313,11 +325,14 @@ def setup():
     # clean directories
     clean_source()
     clean_preprocessed()
+    clean_reports()
     # download the data
     download_data()
     unpack_zip()
     # create panda data frames and pickle them
     write_pickle_data_frames()
+    # create reports directory
+    create_report_dir()
 
 
 def setup_if_needed():
@@ -326,6 +341,8 @@ def setup_if_needed():
         print("No zip file. Getting data.")
         setup()
         print("Setup complete")
+    # create reports directory
+    create_report_dir()
 
 
 def pickle_as_single_data_frame(max_year=settings.MAX_YEAR):

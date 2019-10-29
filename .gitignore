@@ -14,3 +14,4 @@ data/*
 
 # private settings
 private_settings.py
+reports/
