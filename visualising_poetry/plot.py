@@ -39,9 +39,19 @@ def author_poems_plot(df, title="No. of authors / No. of poems", x_label="No. of
 
 
 def authorship_publications_overview_plot(df):
+    """ Show authors and the number of times they were published in the various publications. """
 
-    sn.set()
     plot.figure(figsize=(20, 20))
     with sn.axes_style("white"):
         sn.heatmap(df, annot=True, cmap='Oranges', cbar=False, fmt='g', annot_kws={'size': 14})
     plot.show()
+
+
+def authorship_publication_year_plot(df):
+    """ Show authors and the number of times they were published in a year. """
+
+    plot.figure(figsize=(20, 20))
+    with sn.axes_style("white"):
+        sn.heatmap(df, annot=True, cmap='Oranges', cbar=False, fmt='g', annot_kws={'size':14})
+    plot.show()
+

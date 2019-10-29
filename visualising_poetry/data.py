@@ -30,6 +30,7 @@ YEAR = 'year'
 MONTH = 'month'
 DAY = 'day'
 F_LINE = 'first line'
+L_LINE = 'last line'
 ATTR_TYPE = 'attribution type'
 AUTH = 'authorship'
 
@@ -49,7 +50,7 @@ MONTH_MAP = {
 EXPECTED_ATTRS = ['nan', 'p/n', 'ini', 'm.pseud', 'm.d.e.', 'f.pseud', 'f.d.e.', 'information missing', 'illegible']
 
 # summary data - useful subset of fields
-SUMMARY = [REF_NO, PUB_TITLE, YEAR, MONTH, DAY, F_LINE, ATTR_TYPE]
+SUMMARY = [REF_NO, PUB_TITLE, YEAR, MONTH, DAY, PRINTED_DATE_STR, AUTH, F_LINE, ATTR_TYPE]
 
 # used to tidy up m.pseud and f.pseud
 attr_type_regex = re.compile(r'^[m|f]\. pseud$')
@@ -176,7 +177,7 @@ def write_pickle_data_frames():
         df[GENDER] = df.apply(calculate_gender, axis=1)
 
         # strip extra whitespace in authors
-        df[AUTH] = df[AUTH].strip()
+        df[AUTH] = df.apply(clean_author, axis=1)
 
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
@@ -246,6 +247,13 @@ def clean_attribution_type(row):
             val = val + '.'
         elif val == 'pn':
             val = 'p/n'
+    return val
+
+
+def clean_author(row):
+    val = row[AUTH]
+    if row is not np.NaN:
+        val = str(val).strip()
     return val
 
 
@@ -375,7 +383,7 @@ def end_year(df):
     return df[YEAR].max()
 
 
-def print_year_range(df):
+def year_range(df):
     """ Create an array of print years in a data frame (used in graphs a lot) """
     return np.arange(start_year(df), end_year(df) + 1)
 
@@ -516,7 +524,7 @@ def attribution_types_overview_df(df):
 
     # create an empty data frame
     columns = np.array(all_cols)
-    index = print_year_range(df)
+    index = year_range(df)
     attr_types_df = pd.DataFrame(np.NaN, index=index, columns=columns)
 
     # group dataset by year
@@ -688,6 +696,35 @@ def authorship_publications_overview_df(df, pub_no=20):
 
     return author_pubs
 
+
+def authorship_publication_year_overview_df(df, pub_no=20):
+    """ Provide a data frame that shows which authors poems were printed in each year. The pub_no, is a threshold
+        to only show authors attributed to that or more poems in the dataset. Default is 20 or more. """
+
+    # get authors
+    authors = authorship_overview_df(df)
+
+    # limit it to authors with 20 or more poems
+    authors = authors[authors['Total Poems'] >= pub_no]
+
+    # year range
+    years = year_range(df)
+
+    # set the index to the authors
+    authors = authors.set_index('Author')
+
+    # data frame for authors and years
+    authors_years = pd.DataFrame(np.zeros(shape=(len(authors.index), len(years))), columns=years, index=authors.index)
+
+    # populate the data frame
+    for author in authors_years.index:
+        author_year_df = df[df[AUTH] == author]
+        for year in author_year_df[PRINTED_YEAR]:
+            if year in authors_years.columns:
+                authors_years.at[author, year] += 1
+
+    return authors_years
+
 # ----------- Display widgets
 
 
@@ -736,4 +773,3 @@ def authorship_publications_overview_df(df, pub_no=20):
 #
 #         # regenerate graph
 #         plot_attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
-
