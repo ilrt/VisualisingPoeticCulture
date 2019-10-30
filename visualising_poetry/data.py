@@ -421,6 +421,27 @@ def publications_df(df, pubs):
     return df[df[PUB_TITLE].isin(pubs)]
 
 
+def authors_df(df, authors):
+    """ Create a subset data frame based on the authors of the publications """
+    _authors_df = df[df[AUTH].isin(authors)]
+    _authors_df = _authors_df.sort_values([PRINTED_DATE_STR])
+    _authors_df = _authors_df.reset_index(drop=True)
+    return _authors_df
+
+
+def authors_expanded(df, authors):
+    """ We 'expand' the dataset for authors by including copies of poems where they aren't
+        directly attributed to the author, but other copies with the same reference number
+        that have been attributed to that author. """
+
+    _authors_df = authors_df(df, authors)
+    ids = _authors_df[_authors_df[REF_NO].notnull()][REF_NO].unique()
+    expanded = pd.concat([_authors_df, (df[df[REF_NO].isin(ids) & ~df[AUTH].isin(authors)])])
+    expanded = expanded.sort_values([PRINTED_DATE_STR])
+    expanded = expanded.reset_index(drop=True)
+    return expanded
+
+
 def create_publication_year_matrix(df):
     """ Create a matrix of publications and years so we can see the coverage in a data frame """
 
@@ -741,6 +762,23 @@ def authorship_publication_year_overview_df(df, pub_no=20):
                 authors_years.at[author, year] += 1
 
     return authors_years
+
+
+def unique_author_list(df, pub_no=2):
+    """ Get a list of authors who have published a specified number of poems or greater.
+        By default, 2 or more poems. We filter our nan."""
+
+    # get authors
+    authors = authorship_overview_df(df)
+    # filter the data
+    authors = authors[authors['Total Poems'] >= pub_no]
+    authors = authors[authors['Author'] != 'nan']
+
+    # get authors and filter
+    author_list = authors['Author'].to_list()
+    author_list.sort()
+
+    return author_list
 
 # ----------- Display widgets
 

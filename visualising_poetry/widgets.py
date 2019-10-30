@@ -52,3 +52,11 @@ def publication_overview_selection(df, value, out):
         plot.show()
 
 
+def author_list_widget(df):
+    author_list = vpd.unique_author_list(df)
+
+    return widgets.Select(
+        options=author_list,
+        description="Choose",
+        disabled=False
+    )
