@@ -680,6 +680,8 @@ def authorship_overview_df(df):
     authors = authors.sort_values(F_LINE, ascending=False)
     authors.columns = ['Author', 'Total Poems']
     authors = authors.reset_index(drop=True)
+    authors = authors.drop([0])
+    print(type(authors))
     return authors
 
 
@@ -779,6 +781,33 @@ def unique_author_list(df, pub_no=2):
     author_list.sort()
 
     return author_list
+
+def author_publications(df, author):
+
+    # get the data for this author
+    author_df = authors_expanded(df, [author])
+
+    # group the data by publications
+    expanded_pub_group = author_df.groupby(PUB_TITLE)
+
+    # get the year range
+    year_range_author = np.arange(author_df[PRINTED_YEAR].min(), author_df[PRINTED_YEAR].max() + 1)
+
+    # publications the author is associated with
+    publications_author = author_df[PUB_TITLE].unique()
+    publications_author.sort()
+
+    # create a data frame populated with zeros
+    matrix = pd.DataFrame(np.zeros(shape=(len(publications_author), len(year_range_author))), columns=year_range_author,
+                          index=publications_author)
+
+    # update the matrix
+    for name, group in expanded_pub_group:
+        years = group[PRINTED_YEAR]
+        for year in years.to_list():
+            matrix.at[name, year] += 1
+
+    return matrix
 
 # ----------- Display widgets
 

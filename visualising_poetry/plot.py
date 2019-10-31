@@ -50,8 +50,9 @@ def authorship_publications_overview_plot(df):
 def authorship_publication_year_plot(df):
     """ Show authors and the number of times they were published in a year. """
 
-    plot.figure(figsize=(20, 20))
+    plot.figure(figsize=(18, 18))
     with sn.axes_style("white"):
-        sn.heatmap(df, annot=True, cmap='Oranges', cbar=False, fmt='g', annot_kws={'size':14})
+        hm = sn.heatmap(df, annot=True, cmap='Oranges', cbar=False, fmt='g', annot_kws={'size': 14})
+        hm.set_yticklabels(hm.get_yticklabels(), rotation=0)
     plot.show()
 
