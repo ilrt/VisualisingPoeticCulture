@@ -56,3 +56,12 @@ def authorship_publication_year_plot(df):
         hm.set_yticklabels(hm.get_yticklabels(), rotation=0)
     plot.show()
 
+
+def heat_map_plot(df, figsize=(18, 18), title='Heatmap', axes_style='white', cmap='Oranges'):
+    """ General heat map plot """
+    plot.figure(figsize=figsize)
+    with sn.axes_style(axes_style):
+        hm = sn.heatmap(df, annot=True, cmap=cmap, cbar=False, fmt='g', annot_kws={'size': 14})
+        hm.set_yticklabels(hm.get_yticklabels(), rotation=0)
+        hm.set_title(title)
+    plot.show()

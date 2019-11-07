@@ -138,6 +138,7 @@ def write_pickle_data_frames():
 
     # go through sub folders and get the full name of Excel (.xlsx) files
     for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
+        print(file)
         # get the filename (without folders and file extension)
         filename = file.split("/")[-1]
         filename = filename.replace('.xlsx', '')
@@ -184,6 +185,8 @@ def write_pickle_data_frames():
 
         # strip extra whitespace in authors
         df[AUTH] = df.apply(clean_author, axis=1)
+
+        df[F_LINE] = df[F_LINE].str.strip()
 
         # write the pickle file
         df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
@@ -782,7 +785,9 @@ def unique_author_list(df, pub_no=2):
 
     return author_list
 
+
 def author_publications(df, author):
+    """ Create a data frame of poems for the specified author """
 
     # get the data for this author
     author_df = authors_expanded(df, [author])
@@ -806,6 +811,69 @@ def author_publications(df, author):
         years = group[PRINTED_YEAR]
         for year in years.to_list():
             matrix.at[name, year] += 1
+
+    return matrix
+
+
+def author_unique_vs_copies(df, author):
+    """ Get statistics on unique vs copies for a particular author """
+
+    author_df = authors_expanded(df, [author])
+
+    total_poems = len(author_df.index)
+
+    unique_without_copies = author_df[REF_NO].isna().sum()
+    unique_with_copies = author_df[REF_NO].nunique()
+    unique_poems = unique_with_copies + unique_without_copies
+    copies = total_poems - unique_poems
+
+    return pd.DataFrame({'Total poems': [total_poems], 'Unique poems': [unique_poems],
+                         'Unique without copies': [unique_without_copies],
+                         'Unique with copies': [unique_with_copies], 'Copies': [copies]}, index=[author])
+
+
+def author_poem_matrix(df, author):
+    """ Create a matrix to show which poems were published on which"""
+
+    author_df = authors_expanded(df, [author])
+
+    # hold our interim results
+    interim_results = {}
+
+    # first, we deal with those identified as copies. The first line can change
+    # slightly, but we will just use one of the group as the key/index
+    author_df_group = author_df.groupby(REF_NO)
+
+    # group through the copies
+    for name, group in author_df_group:
+        # track title and years
+        poem_title = None
+        years = []
+
+        for index, row in group.iterrows():
+            if poem_title is None:
+                poem_title = row[F_LINE]
+            years.append(row[PRINTED_YEAR])
+
+        # add to the results
+        interim_results[poem_title] = years
+
+    # now we need to deal with the results
+    uniques = author_df[author_df[REF_NO].isnull()][[F_LINE, PRINTED_YEAR]]
+
+    for index, row in uniques.iterrows():
+        interim_results[row[F_LINE]] = [row[PRINTED_YEAR]]
+
+    min_year = author_df[PRINTED_YEAR].min()
+    max_year = author_df[PRINTED_YEAR].max()
+    year_range_index = np.arange(min_year, max_year + 1)
+
+    matrix = pd.DataFrame(np.zeros(shape=(len(interim_results.keys()), year_range_index.size)),
+                          columns=year_range_index, index=interim_results.keys())
+
+    for poem in interim_results.keys():
+        for year in interim_results[poem]:
+            matrix.at[poem, year] += 1
 
     return matrix
 
