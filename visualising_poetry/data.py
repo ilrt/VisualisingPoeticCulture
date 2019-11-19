@@ -827,9 +827,9 @@ def author_unique_vs_copies(df, author):
     total_poems = more_than_once + appearing_once
     copies = total_appearances - appearing_once
 
-    return pd.DataFrame({'Total appearances': [total_appearances], 'Total poems': [total_poems],
-                         'Appearing once': [appearing_once],
-                         'Appearing more than once': [more_than_once], 'Total appearing more than once': [copies]},
+    return pd.DataFrame({'Total appearances': [total_appearances], 'No. of poems': [total_poems],
+                         'No. of poems appearing once': [appearing_once],
+                         'No. of poems with copies': [more_than_once], 'No. of copies': [copies]},
                         index=[author])
 
 
