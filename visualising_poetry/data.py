@@ -820,16 +820,17 @@ def author_unique_vs_copies(df, author):
 
     author_df = authors_expanded(df, [author])
 
-    total_poems = len(author_df.index)
+    total_appearances = len(author_df.index)
 
-    unique_without_copies = author_df[REF_NO].isna().sum()
-    unique_with_copies = author_df[REF_NO].nunique()
-    unique_poems = unique_with_copies + unique_without_copies
-    copies = total_poems - unique_poems
+    appearing_once = author_df[REF_NO].isna().sum()
+    more_than_once = author_df[REF_NO].nunique()
+    total_poems = more_than_once + appearing_once
+    copies = total_appearances - appearing_once
 
-    return pd.DataFrame({'Total poems': [total_poems], 'Unique poems': [unique_poems],
-                         'Unique without copies': [unique_without_copies],
-                         'Unique with copies': [unique_with_copies], 'Copies': [copies]}, index=[author])
+    return pd.DataFrame({'Total appearances': [total_appearances], 'Total poems': [total_poems],
+                         'Appearing once': [appearing_once],
+                         'Appearing more than once': [more_than_once], 'Total appearing more than once': [copies]},
+                        index=[author])
 
 
 def author_poem_matrix(df, author):
@@ -874,6 +875,8 @@ def author_poem_matrix(df, author):
     for poem in interim_results.keys():
         for year in interim_results[poem]:
             matrix.at[poem, year] += 1
+
+    matrix = matrix.sort_index(ascending=True)
 
     return matrix
 
