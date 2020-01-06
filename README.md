@@ -2,11 +2,23 @@
 
 ## Introduction
 
-A Jupyter Notebook to be run on *Microsoft Azure Notebooks*.
+A collection of Jupyter notebooks for analysing Dr Jennifer Batt's metadata of eighteenth century 
+poems published in newspapers and magazines.
+
+Since the projects uses more than one notebook and has its own Python modules, it is best run on locally
+via Anaconda (https://docs.anaconda.com/anaconda/install/).
 
 ## Setup
 
-### Create a Microsoft Azure Notebook
+### Get the project
+
+Download or clone the project from GitHub (https://github.com/ilrt/VisualisingPoeticCulture):
+
+```
+git clone https://github.com/ilrt/VisualisingPoeticCulture.git
+```
+
+
 
 Login to https://notebooks.azure.com and select 'Upload GtHub Repo' and add the following
 details:
