@@ -60,3 +60,49 @@ def author_list_widget(df):
         description="Choose",
         disabled=False
     )
+
+def attributes_total_output(df, pub_title, out):
+    pub_df = publications_df(df, [pub_title])
+    attr_type_count_df = attribute_types_total_df(pub_df)
+
+    # display results in a table
+    out.clear_output()
+    with out:
+        display(HTML('<h3>{}, {}–{}</h3>'.format(pub_title, start_year(pub_df), end_year(pub_df))))
+        display(HTML('<p>Attribute types in {}'.format(pub_title)))
+        display(HTML(attr_type_count_df.to_html()))
+
+        # display % in a plot
+        attr_type_count_df.plot(kind='bar', x=ATTR_TYPE, y='% of total')
+        plot.show()
+
+        attr_types = attribution_types_df(pub_df)
+        plot_attribution_types_line_plot(attr_types, "All attribution types in {} by year".format(pub_title))
+
+        attr_types_subset = attr_types.drop(['nan', 'same', 'pseud', 'same (p/n)', '?', '--', 'f.pseud/f.d.e.'], axis=1,
+                                            errors='ignore')
+        plot_attribution_types_line_plot(attr_types_subset,
+                                         "Attribution types against the whole dataset by year (non attributed and "
+                                         "other artifacts removed)")
+
+        attr_types_subset['male'] = np.NaN
+        if 'm.pseud' in attr_types_subset and 'm.d.e.' in attr_types_subset:
+            attr_types_subset['male'] = attr_types_subset['m.pseud'] + attr_types_subset['m.d.e.']
+        elif 'm.pseud' in attr_types_subset:
+            attr_types_subset['male'] = attr_types_subset['m.pseud']
+        elif 'm.d.e.' in attr_types_subset:
+            attr_types_subset['male'] = attr_types_subset['m.d.e']
+
+        attr_types_subset['female'] = np.NaN
+        if 'f.pseud' in attr_types_subset and 'f.d.e.' in attr_types_subset:
+            attr_types_subset['female'] = attr_types_subset['f.pseud'] + attr_types_subset['f.d.e.']
+        elif 'f.pseud' in attr_types_subset:
+            attr_types_subset['female'] = attr_types_subset['f.pseud']
+        elif 'f.d.e.' in attr_types_subset:
+            attr_types_subset['female'] = attr_types_subset['f.d.e.']
+
+        attr_types_subset = attr_types_subset.drop(['m.pseud', 'm.d.e.', 'p/n', 'ini', 'f.d.e.', 'f.pseud'],
+                                                   axis=1, errors='ignore')
+
+        # regenerate graph
+        plot_attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
