@@ -1,4 +1,5 @@
 import visualising_poetry.data as vpd
+import visualising_poetry.plot as vpp
 
 import numpy as np
 import matplotlib.pyplot as plot
@@ -77,11 +78,11 @@ def attributes_total_output(df, pub_title, out):
         plot.show()
 
         attr_types = attribution_types_df(pub_df)
-        plot_attribution_types_line_plot(attr_types, "All attribution types in {} by year".format(pub_title))
+        vpp.attribution_types_line_plot(attr_types, "All attribution types in {} by year".format(pub_title))
 
         attr_types_subset = attr_types.drop(['nan', 'same', 'pseud', 'same (p/n)', '?', '--', 'f.pseud/f.d.e.'], axis=1,
                                             errors='ignore')
-        plot_attribution_types_line_plot(attr_types_subset,
+        vpp.attribution_types_line_plot(attr_types_subset,
                                          "Attribution types against the whole dataset by year (non attributed and "
                                          "other artifacts removed)")
 
@@ -105,4 +106,4 @@ def attributes_total_output(df, pub_title, out):
                                                    axis=1, errors='ignore')
 
         # regenerate graph
-        plot_attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
+        vpp.attribution_types_line_plot(attr_types_subset, "Gender attribution types by year")
