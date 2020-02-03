@@ -15,10 +15,14 @@ HEADER = ['Publication (a)', 'Year (a)', 'Month (a)', 'Day (a)', 'Index (a)', 'R
           'Day (b)', 'Index (b)', 'Ref no. (b)', 'First line (b)', 'Second line (b)', 'Penultimate line (b)',
           'Last line (b)', 'Ratio']
 
+REPORT_FILE = 'reports/match_results.csv'
 
-def compare():
+
+def compare(threshold=RATIO_THRESHOLD):
+    """ Run the poem comparison job """
+
     # print the start date/time of the job
-    print(datetime.datetime.utcnow())
+    print('Job started: ' + str(datetime.datetime.utcnow()))
 
     # get the dataset
     df = vpd.complete_dataset()
@@ -37,7 +41,7 @@ def compare():
     col_mon_idx = df.columns.get_loc(vpd.MONTH)
     col_day_idx = df.columns.get_loc(vpd.DAY)
 
-    with open('results.csv', 'a') as csv_file:
+    with open(REPORT_FILE, 'w') as csv_file:
 
         # create a CSV writer
         results_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -59,7 +63,7 @@ def compare():
                 # get the first line of poem b and compare with a
                 string_b = df.iat[y, col_f_line_idx]
                 ratio = fuzz.ratio(string_a, string_b)
-                if ratio >= RATIO_THRESHOLD:
+                if ratio >= threshold:
                     # a values
                     pub_a = df.iat[x, col_pub_idx]
                     year_a = df.iat[x, col_year_idx]
@@ -84,4 +88,5 @@ def compare():
                                              s_line_b, p_line_b, l_line_b, ratio])
 
     # print the start end/time of the job
-    print(datetime.datetime.utcnow())
+    print('Job finished:' + str(datetime.datetime.utcnow()))
+    print('Report written to ' + REPORT_FILE)
