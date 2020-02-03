@@ -18,22 +18,14 @@ Download or clone the project from GitHub (https://github.com/ilrt/VisualisingPo
 git clone https://github.com/ilrt/VisualisingPoeticCulture.git
 ```
 
+### Install the following packages
 
-
-Login to https://notebooks.azure.com and select 'Upload GtHub Repo' and add the following
-details:
-
-* GitHub repository: ilrt/VisualisingPoeticCulture
-* Project Name: VisualisingPoeticCulture
-* Project ID: visualisingpoeticculture
-
-Leave 'Public' and 'Clone recursively' unchecked. Select 'Import'.
-
-### Update the Microsoft Azure Notebook
-
-After the project has been imported, select 'Project Settings'. In the 'Project Settings' window 
-select 'Environment'. Click 'Add', select 'Requirements.txt'. For 'Select Target File' choose 
-'requirements.txt' and for 'Select Python Version' choose 'Python Version 3.6'.
+ * pandas
+ * matplotlib
+ * seaborn
+ * xlrd
+ * ipywidgets
+ * fuzzywuzzy
 
 ### Add a ```private_settings.py``` file
 
