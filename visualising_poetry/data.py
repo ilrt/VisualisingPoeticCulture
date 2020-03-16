@@ -148,7 +148,8 @@ def write_pickle_data_frames():
     for file in [str(x) for x in path.glob('**/*.xlsx')]:
         print(file)
         # get the filename (without folders and file extension)
-        filename = file.split("/")[-1]
+        file_path_parts = os.path.split(file)
+        filename = file_path_parts[-1]
         filename = filename.replace('.xlsx', '')
 
         # open the excel file and get the poem data
