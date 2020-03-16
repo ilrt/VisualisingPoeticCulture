@@ -232,7 +232,7 @@ def create_printed_datetime(row):
         month = MONTH_MAP[month]
 
     # if the day isn't set, make it the first of the month
-    if day is np.NaN:
+    if pd.isna(day):
         day = 1
         # if its a magazine, its actually published at the start of the following month
         if 'magazine' in pub_type:
