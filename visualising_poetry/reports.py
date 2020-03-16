@@ -2,6 +2,7 @@ import settings as settings
 import visualising_poetry.data as vpd
 
 from datetime import datetime
+import os
 import pandas as pd
 
 
@@ -13,7 +14,7 @@ def poems_unexpected_multiple_authors_report():
 
     # path and name for the report
     file_name = "poems_unexpected_multiple_authors–{}.csv".format(datetime.now().strftime('%Y-%m-%d'))
-    full_path_name = settings.REPORTS_DIR + file_name
+    full_path_name = os.path.join(settings.REPORTS_DIR, file_name)
 
     # get the copies
     df = vpd.complete_dataset()
