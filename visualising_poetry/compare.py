@@ -7,6 +7,8 @@ import visualising_poetry.data as vpd
 import numpy as np
 import datetime
 import csv
+import os
+import settings
 
 RATIO_THRESHOLD = 80
 
@@ -15,7 +17,7 @@ HEADER = ['Publication (a)', 'Year (a)', 'Month (a)', 'Day (a)', 'Index (a)', 'R
           'Day (b)', 'Index (b)', 'Ref no. (b)', 'First line (b)', 'Second line (b)', 'Penultimate line (b)',
           'Last line (b)', 'Ratio']
 
-REPORT_FILE = 'reports/match_results.csv'
+REPORT_FILE = os.path.join(settings.REPORTS_DIR, 'match_results.csv')
 
 
 def compare(threshold=RATIO_THRESHOLD):
