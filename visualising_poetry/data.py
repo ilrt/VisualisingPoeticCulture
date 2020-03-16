@@ -17,6 +17,7 @@ import shutil
 import urllib
 from zipfile import ZipFile
 import ipywidgets as widgets
+from pathlib import Path
 
 import private_settings as private
 
@@ -119,12 +120,13 @@ def clean_all():
 
 def download_data():
     """ Get the zip file specified in the private settings """
-    urllib.request.urlretrieve(private.DATABASE_ZIP_URL, settings.DATA_SRC + settings.DB_FILE)
+    urllib.request.urlretrieve(private.DATABASE_ZIP_URL, settings.DB_FILE)
 
 
 def unpack_zip():
     """ Extract a zip file of Excel files """
-    for file in glob.glob(settings.DATA_SRC + '*.zip', recursive=False):
+    path = Path(settings.DATA_SRC)
+    for file in [str(x) for x in path.glob('**/*.zip')]:
         with ZipFile(file) as zip_object:
             for item in zip_object.namelist():
                 if item.endswith('.xlsx'):
@@ -142,7 +144,8 @@ def write_pickle_data_frames():
         os.makedirs(settings.PICKLE_SRC)
 
     # go through sub folders and get the full name of Excel (.xlsx) files
-    for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
+    path = Path(settings.DATA_SRC)
+    for file in [str(x) for x in path.glob('**/*.xlsx')]:
         print(file)
         # get the filename (without folders and file extension)
         filename = file.split("/")[-1]
@@ -194,7 +197,7 @@ def write_pickle_data_frames():
         df[F_LINE] = df[F_LINE].str.strip()
 
         # write the pickle file
-        df.to_pickle(settings.PICKLE_SRC + filename + '.pickle')
+        df.to_pickle(os.path.join(settings.PICKLE_SRC, filename + '.pickle'))
 
 
 def create_report_dir():
@@ -345,7 +348,7 @@ def setup():
 
 def setup_if_needed():
     """ Helper method to run at the start of a notebook to ensure that there is data """
-    if not os.path.exists(settings.DATA_SRC) or not os.path.exists(settings.DATA_SRC + settings.DB_FILE):
+    if not os.path.exists(settings.DATA_SRC) or not os.path.exists(settings.DB_FILE):
         print("No zip file. Getting data.")
         setup()
         print("Setup complete")
@@ -355,9 +358,9 @@ def setup_if_needed():
 
 def pickle_as_single_data_frame(max_year=settings.MAX_YEAR):
     """ Load all the pickle files as a single data frame. We don't return data beyond the MAX_YEAR value. """
-    files = glob.glob(settings.PICKLE_SRC + '*.pickle', recursive=True)
     results = []
-    for file in files:
+    path = Path(settings.PICKLE_SRC)
+    for file in [str(x) for x in path.glob('**/*.pickle')]:
         results.append(pd.read_pickle(file))
 
     # merge the files
@@ -372,7 +375,8 @@ def pickle_as_single_data_frame(max_year=settings.MAX_YEAR):
 def source_files_info_as_df():
     """ Create a data frame with the details of the source files """
     data = []
-    for file in glob.glob(settings.DATA_SRC + '**/*.xlsx', recursive=True):
+    path = Path(settings.DATA_SRC)
+    for file in [str(x) for x in path.glob('**/*.xlsx')]:
         row = [file.split('/')[-1]]
         data.append(row)
         df = pd.read_excel(file, sheet_name=POEM_DATA_SHEET)
@@ -384,7 +388,8 @@ def source_files_info_as_df():
 def preprocessed_files_info_as_df():
     """ Create a data frame with the details of the preprocessed files """
     data = []
-    for file in glob.glob(settings.PICKLE_SRC + '*.pickle', recursive=True):
+    path = Path(settings.PICKLE_SRC)
+    for file in [str(x) for x in path.glob('*.pickle')]:
         row = [file.split('/')[-1]]
         data.append(row)
         df = pd.read_pickle(file)

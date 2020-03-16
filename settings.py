@@ -6,16 +6,16 @@ import os
 DATA_ROOT = os.getcwd().replace('notebooks', '')
 
 # location of the Excel files
-DATA_SRC = DATA_ROOT + '/data/source/'
+DATA_SRC = os.path.join(DATA_ROOT, 'data', 'source')
 
 # location of pickled Pandas data frames
-PICKLE_SRC = DATA_ROOT + '/data/preprocessed/'
+PICKLE_SRC = os.path.join(DATA_ROOT, 'data', 'preprocessed')
 
 # location to puts reports
-REPORTS_DIR = DATA_ROOT + '/reports/'
+REPORTS_DIR = os.path.join(DATA_ROOT, 'reports')
 
 # name the file we download from DropBox
-DB_FILE = 'database.zip'
+DB_FILE = os.path.join(DATA_SRC, 'database.zip')
 
 # We currently have an outlier of 1792 in the dataset, with nothing in between 1760
 # and 1792. We cab use this to filter out any years beyond the value set.
