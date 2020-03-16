@@ -377,7 +377,8 @@ def source_files_info_as_df():
     data = []
     path = Path(settings.DATA_SRC)
     for file in [str(x) for x in path.glob('**/*.xlsx')]:
-        row = [file.split('/')[-1]]
+        file_path_parts = os.path.split(file)
+        row = [file_path_parts[-1]]
         data.append(row)
         df = pd.read_excel(file, sheet_name=POEM_DATA_SHEET)
         row.append(df.shape[0])
@@ -390,7 +391,8 @@ def preprocessed_files_info_as_df():
     data = []
     path = Path(settings.PICKLE_SRC)
     for file in [str(x) for x in path.glob('*.pickle')]:
-        row = [file.split('/')[-1]]
+        file_path_parts = os.path.split(file)
+        row = [file_path_parts[-1]]
         data.append(row)
         df = pd.read_pickle(file)
         row.append(df.shape[0])
